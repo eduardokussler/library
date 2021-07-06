@@ -6,6 +6,9 @@ let Book = {
     this.read = read;
     return this;
   },
+  changeReadStatus: function() {
+    this.read = !this.read;
+  },
   info: function() {
       return `${this.title} by ${this.author}, ${pages} pages, ${this.read ? 'already read': 'not read yet'}`;
   }
@@ -23,20 +26,30 @@ function renderLibraryToHtml(placeToAppend) {
       author: document.createElement('td'),
       pages: document.createElement('td'),
       read: document.createElement('td'),
-      remove: document.createElement('td'),
+      alter: document.createElement('td'),
     };
     let newTr = document.createElement('tr');
-    let button = document.createElement('button');
-    button.innerText = 'Remove Book';
+    let removeButton = document.createElement('button');
+    let changeReadStatusButton = document.createElement('button');
+    changeReadStatusButton.innerText = (library[i].read) ? 'Mark unread':'Mark read';
+    changeReadStatusButton.setAttribute('index', `${i}`);
+    changeReadStatusButton.addEventListener('click', (e) => {
+      library[i].changeReadStatus(Number(e.target.getAttribute('index')));
+      redrawTable();
+      updateStorage();
+    });
+    newRow.alter.appendChild(changeReadStatusButton);
+    removeButton.innerText = 'Remove Book';
+    removeButton.setAttribute('index', `${i}`);
+    removeButton.addEventListener('click', (e) => {
+      removeBook(e.target.getAttribute('index'));
+      updateStorage();
+    });
     newRow.title.innerText = library[i].title;
     newRow.author.innerText = library[i].author;
     newRow.pages.innerText = library[i].pages;
     newRow.read.innerText = library[i].read;
-    button.setAttribute('index', `${i}`);
-    button.addEventListener('click', (e) => {
-      removeBook(e.target.getAttribute('index'));
-    })
-    newRow.remove.appendChild(button);
+    newRow.alter.appendChild(removeButton);
     for(col in newRow) {
       newTr.appendChild(newRow[col]);
     }
@@ -48,8 +61,7 @@ function renderLibraryToHtml(placeToAppend) {
 function removeBook(index) {
   index = Number(index);
   library.splice(index, 1);
-  clearTable();
-  renderLibraryToHtml(table);
+  redrawTable();
 }
 
 function addBook() {
@@ -66,6 +78,16 @@ function addBook() {
   renderLibraryToHtml(table);
 }
 
+function updateStorage() {
+  localStorage.removeItem('library');
+  localStorage.setItem('library', JSON.stringify(library));
+}
+
+function redrawTable() {
+  clearTable();
+  renderLibraryToHtml(table);
+}
+
 function clearTable() {
   let tableHeader = document.querySelector('thead');
   while(tableHeader.nextSibling) {
@@ -73,11 +95,30 @@ function clearTable() {
   }
 }
 
+function setupLocalStorage() {
+  if(localStorage.getItem('library') === null) {
+    localStorage.setItem('library', JSON.stringify(library));
+  } else {
+    let storedLibrary = JSON.parse(localStorage.getItem('library'));
+    for(let i = 0; i < storedLibrary.length; i++) {
+      let storedBook = Object.create(Book).init(
+        storedLibrary[i].title,
+        storedLibrary[i].author,
+        storedLibrary[i].pages,
+        storedLibrary[i].read
+      );
+      library.push(storedBook);
+    }
+  }
+}
+
 const addBookButton = document.querySelector('#newBook');
 addBookButton.addEventListener('click', () => {
   addBook();
+  updateStorage();
 })
 let library = [];
+setupLocalStorage();
 const table = document.querySelector('table');
 renderLibraryToHtml(table);
 
